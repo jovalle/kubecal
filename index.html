@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#202c40" />
+    <title>KubeCal | KubeCon NA 2026</title>
+    <link
+      rel="icon"
+      href="./assets/kubecal-inverted.svg"
+      type="image/svg+xml"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to schedule</a>
+    <header class="top">
+      <div>
+        <a class="brand" href="#/"
+          ><img src="./assets/kubecal.svg" alt="" />KubeCal</a
+        >
+        <nav class="main-nav" aria-label="Main navigation">
+          <a href="#/">Schedule</a><a href="#/speakers">Speakers</a
+          ><a href="#/sponsors">Sponsors</a>
+        </nav>
+        <div id="header-controls" class="header-controls" hidden>
+          <button
+            id="header-mine"
+            class="header-button"
+            type="button"
+            aria-label="Show My Schedule"
+            title="Show My Schedule"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M16 3v4M8 3v4M3 10h18m4 6 2 2 4-4" />
+            </svg>
+          </button>
+          <span class="header-views-label" aria-hidden="true">View</span>
+          <div class="header-views" role="group" aria-label="Schedule View">
+            <button
+              class="header-button"
+              type="button"
+              data-header-view="simple"
+              aria-label="Simple View"
+              title="Simple View"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 6h2m3 0h11M4 12h2m3 0h11M4 18h2m3 0h11" />
+              </svg></button
+            ><button
+              class="header-button"
+              type="button"
+              data-header-view="expanded"
+              aria-label="Expanded View"
+              title="Expanded View"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 5h16M4 9h11M4 14h16M4 18h11" />
+              </svg></button
+            ><button
+              class="header-button"
+              type="button"
+              data-header-view="grid"
+              aria-label="Grid View"
+              title="Grid View"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="4" width="7" height="7" />
+                <rect x="13" y="4" width="7" height="7" />
+                <rect x="4" y="13" width="7" height="7" />
+                <rect x="13" y="13" width="7" height="7" />
+              </svg></button
+            ><button
+              class="header-button"
+              type="button"
+              data-header-view="venue"
+              aria-label="Venue View"
+              title="Venue View"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12Z" />
+                <circle cx="12" cy="9" r="2" />
+              </svg>
+            </button>
+          </div>
+          <button
+            id="header-grid-width"
+            class="header-button"
+            type="button"
+            aria-label="Full Width"
+            title="Full Width"
+            hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M8 6 3 12l5 6M16 6l5 6-5 6M3 12h18" />
+            </svg>
+          </button>
+        </div>
+        <button
+          id="header-filter"
+          aria-label="Filters"
+          title="Filters"
+          class="header-button"
+          type="button"
+          aria-controls="filters-panel"
+          aria-expanded="false"
+          hidden
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 5h16l-6 7v6l-4 2v-8z" /></svg
+          ><span id="header-filter-count" class="header-count" hidden></span>
+        </button>
+        <button
+          id="menu-toggle"
+          class="header-button"
+          type="button"
+          aria-label="Open menu"
+          aria-controls="header-menu"
+          aria-expanded="false"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path class="menu-line-top" d="M4 6h16" />
+            <path class="menu-line-middle" d="M4 12h16" />
+            <path class="menu-line-bottom" d="M4 18h16" />
+          </svg>
+        </button>
+        <div class="nav-actions" id="header-menu" inert>
+          <nav class="mobile-nav" aria-label="Mobile navigation">
+            <a href="#/">Schedule</a><a href="#/speakers">Speakers</a
+            ><a href="#/sponsors">Sponsors</a>
+          </nav>
+          <button
+            id="print-button"
+            type="button"
+            title="Print schedule"
+            aria-label="Print schedule"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9V3h12v6M6 18H4v-7h16v7h-2" />
+              <path d="M6 14h12v7H6z" />
+              <path d="M17 11h.01" />
+            </svg>
+          </button>
+          <button
+            id="calendar-button"
+            type="button"
+            title="Download calendar"
+            aria-label="Download calendar"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M16 3v4M8 3v4M3 10h18M12 13v5m-2-2h4" />
+            </svg>
+          </button>
+          <button
+            id="share-button"
+            type="button"
+            title="Share schedule"
+            aria-label="Share schedule"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4" />
+            </svg>
+          </button>
+          <button
+            id="import-button"
+            type="button"
+            title="Import"
+            aria-label="Import"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3v12m-4-4 4 4 4-4" />
+              <path d="M4 17v3h16v-3" />
+            </svg>
+          </button>
+          <button
+            id="export-button"
+            type="button"
+            title="Export"
+            aria-label="Export"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 16V4m-4 4 4-4 4 4" />
+              <path d="M4 17v3h16v-3" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <div class="page">
+      <section class="banner" aria-label="KubeCon North America 2026">
+        <img
+          src="./assets/kubecon-2026.png"
+          alt="KubeCon + CloudNativeCon North America 2026, November 9–12 in Salt Lake City, Utah"
+        />
+        <div class="banner-actions">
+          <a
+            href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/"
+            target="_blank"
+            rel="noopener"
+            >More Info</a
+          >
+          <a
+            href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/register/"
+            target="_blank"
+            rel="noopener"
+            >Register</a
+          >
+        </div>
+      </section>
+      <main id="main" tabindex="-1">
+        <p class="loading">Loading schedule…</p>
+      </main>
+      <footer>Last updated November 6, 2026</footer>
+    </div>
+    <dialog id="modal" aria-labelledby="modal-title">
+      <div class="dialog-head">
+        <h2 id="modal-title"></h2>
+        <button id="close-modal" aria-label="Close">×</button>
+      </div>
+      <div id="modal-content"></div>
+      <div id="modal-notice" role="status" aria-live="polite"></div>
+    </dialog>
+    <div id="event-preview" class="event-preview" role="tooltip" hidden></div>
+    <aside
+      id="sponsor-popover"
+      class="sponsor-popover"
+      aria-label="Sponsor details"
+      hidden
+    >
+      <div class="sponsor-popover-head">
+        <strong></strong
+        ><button
+          type="button"
+          class="sponsor-popover-close"
+          aria-label="Close sponsor details"
+        >
+          ×
+        </button>
+      </div>
+      <div class="sponsor-popover-body" tabindex="0"></div>
+    </aside>
+    <div id="updates" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <script type="module" src="./app.mjs"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="KubeCal">
+  <defs>
+    <clipPath id="frame"><path d="M100 12 165 43 181 114 136 174H64L19 114 35 43Z"/></clipPath>
+    <mask id="facets"><path fill="#fff" d="M0 0h200v200H0z"/><circle cx="100" cy="97" r="53" fill="#000"/></mask>
+    <mask id="cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <path fill="#fff" d="M0 0h200v200H0z"/>
+      <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="100" cy="97" r="46" stroke-width="9"/>
+        <path stroke-width="8" d="M100 33v29M52 57l22 21M40 110l31-7M74 153l14-27M126 153l-14-27M160 110l-31-7M148 57l-22 21"/>
+        <rect x="74" y="70" width="52" height="59" rx="6" stroke-width="5"/>
+        <path stroke-width="4" d="M76 84h48M85 65v10m30-10v10"/>
+      </g>
+      <g fill="#000">
+        <rect x="81" y="89" width="9" height="9" rx="1"/><rect x="96" y="89" width="9" height="9" rx="1"/><rect x="111" y="89" width="9" height="9" rx="1"/>
+        <rect x="81" y="102" width="9" height="9" rx="1"/><rect x="96" y="102" width="9" height="9" rx="1"/><rect x="111" y="102" width="9" height="9" rx="1"/>
+        <rect x="81" y="115" width="9" height="9" rx="1"/><rect x="96" y="115" width="9" height="9" rx="1"/><rect x="111" y="115" width="9" height="9" rx="1"/>
+      </g>
+      <path fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m98 106 2 2 4-5"/>
+    </mask>
+  </defs>
+  <g mask="url(#cutout)">
+    <path fill="#fff" d="M100 12 165 43 181 114 136 174H64L19 114 35 43Z"/>
+    <path clip-path="url(#frame)" mask="url(#facets)" fill="none" stroke="#326ce5" stroke-width="2.5" stroke-linejoin="round" d="M100 12v162M35 43l130 101M165 43 35 144M19 114l146-35M181 114 35 79M64 174l69-146M136 174 67 28" opacity=".35"/>
+  </g>
+</svg>

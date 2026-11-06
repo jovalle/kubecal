@@ -1,0 +1,5 @@
+dist/
+tmp/
+data/
+package-lock.json
+CHANGELOG.md

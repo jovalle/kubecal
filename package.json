@@ -1,0 +1,22 @@
+{
+  "name": "kubecal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5465 --strictPort",
+    "build": "rm -rf dist && mkdir dist && cp -R index.html *.mjs style.css .nojekyll assets data dist/",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/git": "^11.0.1",
+    "conventional-changelog-conventionalcommits": "^10.4.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "semantic-release": "^25.0.9",
+    "vite": "^8.3.6"
+  }
+}
