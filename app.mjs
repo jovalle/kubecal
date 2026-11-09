@@ -28,16 +28,28 @@ const $ = (s) => document.querySelector(s),
           "'": '&#39;',
         })[c],
     );
-const [data, dictionary, people, sponsorData] = await Promise.all([
-  fetch('./data/sessions.json').then((r) => r.json()),
-  fetch('./data/dictionary-v1.json').then((r) => r.json()),
-  fetch('./data/speakers.json').then((r) => r.json()),
-  fetch('./data/sponsors.json').then((r) => r.json()),
-]).catch(() => {
-  document.querySelector('#main').innerHTML =
-    '<h1>Schedule unavailable</h1><p role="alert">The schedule could not be loaded. Check your connection and reload this page.</p>';
-  throw Error('Could not load schedule data');
-});
+const [data, dictionary, legacyDictionary, people, sponsorData] =
+  await Promise.all([
+    fetch('./data/sessions.json').then((r) => r.json()),
+    fetch('./data/dictionary-v2.json').then((r) => r.json()),
+    fetch('./data/dictionary-v1.json').then((r) => r.json()),
+    fetch('./data/speakers.json').then((r) => r.json()),
+    fetch('./data/sponsors.json').then((r) => r.json()),
+  ]).catch(() => {
+    document.querySelector('#main').innerHTML =
+      '<h1>Schedule unavailable</h1><p role="alert">The schedule could not be loaded. Check your connection and reload this page.</p>';
+    throw Error('Could not load schedule data');
+  });
+function restoreState(code) {
+  return code.startsWith('KC2.')
+    ? decodeState(code, dictionary, 2)
+    : decodeState(code, legacyDictionary);
+}
+const updatedAt = $('#updated-at');
+updatedAt.dateTime = data.updated;
+updatedAt.textContent = new Date(
+  `${data.updated}T00:00:00Z`,
+).toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' });
 const peopleById = new Map(people.map((p) => [p.id, p]));
 const speakerGroups = groupSpeakers(people);
 const speakerGroupById = new Map(
@@ -494,7 +506,7 @@ function updateSponsors() {
 function snapshot(code) {
   let shared;
   try {
-    shared = decodeState(code, dictionary);
+    shared = restoreState(code);
   } catch {
     $('#main').innerHTML =
       '<section class="detail"><h1>Invalid Snapshot</h1><p>This link is incomplete or damaged.</p><a href="#/">Return to Schedule</a></section>';
@@ -575,7 +587,7 @@ function openImport() {
 function openExport() {
   let code;
   try {
-    code = encodeState(state, dictionary);
+    code = encodeState(state, dictionary, 2);
   } catch (e) {
     code = '';
     notify(e.message);
@@ -899,10 +911,7 @@ $('#main').addEventListener('click', (e) => {
     document.querySelector('[data-action="expand-grid"]')?.focus();
   } else if (a === 'import-snapshot') {
     try {
-      const next = decodeState(
-        e.target.closest('[data-action]').dataset.code,
-        dictionary,
-      );
+      const next = restoreState(e.target.closest('[data-action]').dataset.code);
       openImport();
       preview(next);
     } catch (err) {
@@ -986,8 +995,8 @@ $('#share-button').onclick = () => {
   try {
     const page = location.hash.slice(2).split('?')[0].split('/');
     const code =
-      page[0] === 'snapshot' ? page[1] : encodeState(state, dictionary);
-    decodeState(code, dictionary);
+      page[0] === 'snapshot' ? page[1] : encodeState(state, dictionary, 2);
+    restoreState(code);
     const link = new URL(location.href);
     link.hash = '/snapshot/' + code;
     showModal(
@@ -1019,7 +1028,7 @@ $('#modal').addEventListener('click', async (e) => {
     } else if (a === 'preview-code') {
       pending = null;
       $('#import-preview').innerHTML = '';
-      preview(decodeState(recoveryCode($('#recovery').value), dictionary));
+      preview(restoreState(recoveryCode($('#recovery').value)));
     } else if (a === 'export')
       download(
         'kubecal-2026-backup.json',

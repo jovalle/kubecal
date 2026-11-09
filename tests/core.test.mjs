@@ -65,3 +65,21 @@ test('snapshot links contain recoverable immutable codes', async () => {
   assert.equal(recoveryCode(id), id);
   assert.throws(() => recoveryCode('https://example.com/#/session/abc'));
 });
+
+test('versioned recovery dictionaries restore old codes and include newly added sessions', () => {
+  const oldDictionary = ['a', 'b', 'c'];
+  const newDictionary = ['a', 'b', 'c', 'new-session'];
+  const oldState = {
+    selected: ['a', 'c'],
+    timezone: 'America/Denver',
+    view: 'grid',
+  };
+  const oldCode = encodeState(oldState, oldDictionary);
+  const newState = { ...oldState, selected: ['a', 'new-session'] };
+  const newCode = encodeState(newState, newDictionary, 2);
+  assert.match(newCode, /^KC2\./);
+  assert.deepEqual(decodeState(newCode, newDictionary, 2), newState);
+  assert.deepEqual(decodeState(oldCode, oldDictionary), oldState);
+  assert.throws(() => decodeState(newCode, oldDictionary));
+  assert.throws(() => decodeState(oldCode, newDictionary, 2));
+});

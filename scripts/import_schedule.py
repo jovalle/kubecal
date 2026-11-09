@@ -178,7 +178,10 @@ assert (
 )
 Path("data/sessions.json").write_text(
     json.dumps(
-        {"updated": "2026-11-06", "sessions": out},
+        {
+            "updated": datetime.now(ZoneInfo("America/Denver")).date().isoformat(),
+            "sessions": out,
+        },
         ensure_ascii=False,
         separators=(",", ":"),
     )

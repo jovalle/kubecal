@@ -12,7 +12,7 @@ const unbase64 = (s) =>
   Uint8Array.from(atob(s.replaceAll('-', '+').replaceAll('_', '/')), (c) =>
     c.charCodeAt(0),
   );
-export function encodeState(state, dictionary) {
+export function encodeState(state, dictionary, version = 1) {
   const bits = new Uint8Array(Math.ceil(dictionary.length / 8)),
     chosen = new Set(state.selected);
   for (const id of chosen)
@@ -40,14 +40,14 @@ export function encodeState(state, dictionary) {
   const prefs = base64(
     new TextEncoder().encode(JSON.stringify([state.timezone, state.view])),
   );
-  const body = `KC1.${encoded}.${prefs}`;
+  const body = `KC${version}.${encoded}.${prefs}`;
   return `${body}.${checksum(body)}`;
 }
-export function decodeState(code, dictionary) {
+export function decodeState(code, dictionary, version = 1) {
   const parts = code.trim().split('.');
   if (
     parts.length !== 4 ||
-    parts[0] !== 'KC1' ||
+    parts[0] !== `KC${version}` ||
     !/^[sb][A-Za-z0-9_-]*$/.test(parts[1]) ||
     checksum(parts.slice(0, 3).join('.')) !== parts[3]
   )
