@@ -1823,7 +1823,9 @@
   {
     "name": "Pulumi",
     "level": "Silver",
-    "categories": [],
+    "categories": [
+      "Platform Engineering"
+    ],
     "booth": "200",
     "description": "Pulumi is the open source agentic infrastructure platform that lets humans and agents build and manage Kubernetes and cloud infrastructure as software, using languages like TypeScript, Python, Go, and HCL. Trusted by 4,000+ companies including Snowflake, NVIDIA, and BMW, Pulumi helps platform teams move fast inside the guardrails they set.\n",
     "website": "https://www.pulumi.com/",
@@ -2017,7 +2019,7 @@
     ],
     "booth": "266",
     "description": "Sigi is the AI-native observability platform that unifies OpenTelemetry (OTel) signals across your network and application stack. One place to see what's happening, find out why, and take action.\n",
-    "website": "",
+    "website": "http://sigi.io/",
     "logo": "https://events.linuxfoundation.org/wp-content/uploads/2026/08/Sigi_Kubecon-Logo.svg"
   },
   {
@@ -2549,7 +2551,8 @@
     "name": "Zesty",
     "level": "Gold",
     "categories": [
-      "Platform Engineering"
+      "Platform Engineering",
+      "Application Development + Developer Experience"
     ],
     "booth": "178",
     "description": "Zesty helps organizations boost efficiency with its Kubernetes optimization platform. Through intelligent automation and a multi-layer optimization approach, Zesty unifies real-time resource and commitment optimization in a single platform, enabling FinOps and DevOps teams to reduce costs while maintaining peak performance.\n",
