@@ -12,11 +12,18 @@ deps:
     @if [ ! -f .git/hooks/pre-commit ]; then pre-commit install; fi
 
 # Start the Vite live-reload server and open it in a Chromium browser
-dev: deps
+dev: deps (_serve "")
+
+# Cache remote images locally, then serve the site with no network needed
+offline: deps
+    python3 scripts/offline.py
+    @just _serve "--config vite.offline.config.mjs"
+
+_serve config:
     #!/usr/bin/env bash
     set -euo pipefail
     url="http://{{host}}:{{port}}/"
-    npx vite --host {{host}} --port {{port}} --strictPort &
+    npx vite {{config}} --host {{host}} --port {{port}} --strictPort &
     server=$!
     trap 'kill $server 2>/dev/null' EXIT INT TERM
     until curl -sf -o /dev/null "$url"; do

@@ -61,8 +61,17 @@ const sessions = data.sessions,
 const defaults = { selected: [], timezone: 'America/Denver', view: 'simple' };
 let state = { ...defaults },
   storageOK = true;
+const diskStore = await fetch('./api/schedule')
+  .then((r) =>
+    r.headers.get('X-KubeCal-Store') === 'disk'
+      ? r.status === 200
+        ? r.text()
+        : ''
+      : null,
+  )
+  .catch(() => null);
 try {
-  const saved = localStorage.getItem(key);
+  const saved = diskStore || localStorage.getItem(key);
   if (saved) {
     const parsed = JSON.parse(saved);
     validate(parsed);
@@ -125,6 +134,18 @@ function validate(s) {
 function save() {
   if (!storageOK) {
     notify('Local data was not overwritten. Export a backup.');
+    return;
+  }
+  if (diskStore !== null) {
+    fetch('./api/schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    })
+      .then((r) => {
+        if (!r.ok) throw Error();
+      })
+      .catch(() => notify('Changes could not be saved to disk.'));
     return;
   }
   try {
