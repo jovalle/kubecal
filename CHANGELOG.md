@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/jovalle/kubecal/compare/v1.0.0...v1.1.0) (2026-11-10)
+
+### Features
+
+* **offline:** serve cached images and persist schedule to disk ([7553601](https://github.com/jovalle/kubecal/commit/7553601ff07c95b7d43ccd2e3b9674db84635c1e))
+* **recovery:** add v2 dictionary for newly published sessions ([692fbd0](https://github.com/jovalle/kubecal/commit/692fbd08c64ec6b39b782decaab73f1b1630efe7))
+
 ## 1.0.0 (2026-11-06)
 
 ### Features
