@@ -2336,3 +2336,62 @@ input[type='search']:focus-visible {
   height: 1px;
   pointer-events: none;
 }
+
+/* Session details share the same layout on the event page and in its preview. */
+.session-content {
+  color: #242936;
+  line-height: 1.55;
+}
+.session-content .save {
+  width: auto;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 5px;
+  color: #324f94;
+  border-color: #9aaac0;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.session-content .save.selected {
+  color: white;
+  border-color: #176b4a;
+}
+.session-content .meta {
+  margin: 20px 0;
+  padding: 14px 16px;
+  border-radius: 5px;
+  background: #f2f5f8;
+  color: #43536a;
+  line-height: 1.6;
+}
+.session-content .body {
+  white-space: pre-line;
+}
+.session-content p {
+  margin: 16px 0;
+}
+.session-content a,
+#modal-content > p a {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.session-content .tag {
+  margin-top: 0;
+}
+#modal:has(.session-content) .dialog-head {
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+#modal:has(.session-content) .dialog-head h2 {
+  margin: 0 0 16px;
+  line-height: 1.25;
+}
+#modal:has(.session-content) .dialog-head button {
+  flex: none;
+  min-width: 40px;
+  padding: 0;
+  line-height: 1;
+}

@@ -243,9 +243,9 @@ const scheduleUrl = () => {
   const q = filterQuery(filters, state.view);
   return '#/' + (q ? '?' + q : '');
 };
-function saveButton(s) {
+function saveButton(s, withLabel = false) {
   if (snapshotMode) return '';
-  return `<button class="save ${selected(s) ? 'selected' : ''}" data-save="${esc(s.id)}" aria-label="My Schedule: ${esc(s.title)}, ${esc(dateLabel(s.start))}, ${esc(time(s.start))}, ${esc(s.room || 'location to be announced')}" aria-pressed="${selected(s)}">${selected(s) ? '✓' : ''}</button>`;
+  return `<button class="save ${selected(s) ? 'selected' : ''}" data-save="${esc(s.id)}" aria-label="My Schedule: ${esc(s.title)}, ${esc(dateLabel(s.start))}, ${esc(time(s.start))}, ${esc(s.room || 'location to be announced')}" aria-pressed="${selected(s)}">${withLabel ? (selected(s) ? '✓ Saved to My Schedule' : '+ Add to My Schedule') : selected(s) ? '✓' : ''}</button>`;
 }
 function card(s, expanded = false) {
   const preview = expanded ? '' : ` data-preview="${esc(s.id)}"`;
@@ -444,17 +444,20 @@ function schedule() {
       )}</div>${state.view === 'grid' ? `<button class="tool-button" data-action="expand-grid" aria-pressed="${gridExpanded}">Full Width</button>` : ''}</div>${sidebar()}<div class="schedule-results">${mine && state.selected.some((id) => !byId.has(id)) ? '<p class="warning">Some saved sessions are not present in this snapshot. They remain in your backup.</p>' : ''}<div class="muted">${count}</div>${state.view === 'grid' ? grid(list) : grouped(list, state.view)}</div></div>`;
   announceResults(count);
 }
+function sessionContent(s) {
+  const conflicts = sessions.filter(
+    (x) => x.id !== s.id && selected(x) && overlaps(s, x),
+  );
+  return `<div class="session-content">${saveButton(s, true)}<p class="meta">${esc(dateLabel(s.start))}<br>${esc(time(s.start))} – ${esc(time(s.end))}<br>${esc(s.room || 'Location To Be Announced')}</p>${conflicts.length ? `<p class="warning">Overlaps with ${conflicts.length} saved ${conflicts.length === 1 ? 'session' : 'sessions'}. You can save both.</p>` : ''}<p class="body">${esc(s.description || 'No description provided.')}</p>${s.speakers ? `<p>${s.speakerIds?.length ? s.speakerIds.map((id) => `<a href="#/speaker/${encodeURIComponent(id)}">${esc(peopleById.get(id)?.name || 'Speaker')}</a>`).join(', ') : esc(s.speakers)}</p>` : ''}<div>${s.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div><p><a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">View official session</a></p>${s.links.map((l) => `<p><a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener">${esc(l.label || 'Session link')}</a></p>`).join('')}</div>`;
+}
 function detail(s) {
   if (!s) {
     $('#main').innerHTML =
       '<div class="detail"><h1>Session not found</h1><a href="#/">Return to schedule</a></div>';
     return;
   }
-  let conflicts = sessions.filter(
-    (x) => x.id !== s.id && selected(x) && overlaps(s, x),
-  );
   $('#main').innerHTML =
-    `<article class="detail"><a href="${esc(scheduleUrl())}">← Back to schedule</a><h1>${esc(s.title)}</h1><div class="actions">${saveButton(s)} <span>${selected(s) ? 'Saved to My Schedule' : 'Add to My Schedule'}</span></div><p class="meta">${esc(dateLabel(s.start))}<br>${esc(time(s.start))} – ${esc(time(s.end))}<br>${esc(s.room || 'Location To Be Announced')}</p>${conflicts.length ? `<p class="warning">Overlaps with ${conflicts.length} saved ${conflicts.length === 1 ? 'session' : 'sessions'}. You can save both.</p>` : ''}<p class="body">${esc(s.description || 'No description provided.')}</p>${s.speakers ? `<h2>Speakers</h2><p>${s.speakerIds?.length ? s.speakerIds.map((id) => `<a href="#/speaker/${encodeURIComponent(id)}">${esc(peopleById.get(id)?.name || 'Speaker')}</a>`).join(', ') : esc(s.speakers)}</p>` : ''}<div>${s.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div><p><a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">View official session</a></p>${s.links.map((l) => `<p><a href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener">${esc(l.label || 'Session link')}</a></p>`).join('')}</article>`;
+    `<article class="detail"><a href="${esc(scheduleUrl())}">← Back to schedule</a><h1>${esc(s.title)}</h1>${sessionContent(s)}</article>`;
 }
 function speakers() {
   let speakers = speakerGroups
@@ -969,7 +972,34 @@ $('#main').addEventListener(
   },
   true,
 );
+let overlaySession = null,
+  overlayDirty = false;
 $('#main').addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="#/session/"]');
+  const page = location.hash.slice(2).split('?')[0];
+  if (
+    link &&
+    (!page || page === 'search') &&
+    e.button === 0 &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    !e.shiftKey &&
+    !e.altKey
+  ) {
+    const session = byId.get(
+      decodeURIComponent(link.getAttribute('href').slice('#/session/'.length)),
+    );
+    if (session) {
+      e.preventDefault();
+      hidePreview();
+      overlaySession = session;
+      showModal(
+        session.title,
+        `${sessionContent(session)}<p><a href="${url(session)}">Open event page</a></p>`,
+      );
+    }
+    return;
+  }
   const slideButton = e.target.closest('[data-slides]');
   if (slideButton) {
     hidePreview();
@@ -1185,6 +1215,19 @@ document.querySelector('.skip').addEventListener('click', (e) => {
   $('#main').focus();
 });
 $('#modal').addEventListener('click', async (e) => {
+  const saveEl = e.target.closest('[data-save]');
+  if (saveEl && overlaySession) {
+    const id = overlaySession.id;
+    state.selected = state.selected.includes(id)
+      ? state.selected.filter((x) => x !== id)
+      : [...state.selected, id];
+    save();
+    overlayDirty = true;
+    $('#modal-content').innerHTML =
+      `${sessionContent(overlaySession)}<p><a href="${url(overlaySession)}">Open event page</a></p>`;
+    $('#modal-content [data-save]')?.focus();
+    return;
+  }
   const a = e.target.dataset.modal;
   if (!a) return;
   try {
@@ -1252,7 +1295,32 @@ $('#modal').addEventListener('change', async (e) => {
     notify(err.message || 'Could not read backup');
   }
 });
+$('#modal').addEventListener('close', () => {
+  if (!overlaySession) return;
+  const id = overlaySession.id;
+  overlaySession = null;
+  if (!overlayDirty) return;
+  overlayDirty = false;
+  const page = location.hash.slice(2).split('?')[0];
+  if (page && page !== 'search') return;
+  const y = window.scrollY;
+  const grids = [...document.querySelectorAll('.grid-wrap')].map(
+    (el) => el.scrollLeft,
+  );
+  render();
+  document.querySelectorAll('.grid-wrap').forEach((el, i) => {
+    el.scrollLeft = grids[i] || 0;
+  });
+  window.scrollTo(0, y);
+  const link = [
+    ...document.querySelectorAll('[data-session] a[href^="#/session/"]'),
+  ].find((el) => el.closest('[data-session]').dataset.session === id);
+  (link || document.querySelector('[data-action=mine]'))?.focus({
+    preventScroll: true,
+  });
+});
 window.addEventListener('hashchange', () => {
+  if (overlaySession) $('#modal').close();
   headerFilterOpen = false;
   closeHeaderMenu();
   if (
