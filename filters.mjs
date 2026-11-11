@@ -1,3 +1,5 @@
+import { slideLinks } from './core.mjs';
+
 function oneEdit(a, b) {
   if (Math.abs(a.length - b.length) > 1) return false;
   let i = 0,
@@ -47,10 +49,12 @@ export const emptyFilters = () => ({
   venue: [],
   type: [],
   level: [],
+  slides: false,
 });
 export function matchesFilters(s, f, day) {
   const q = f.search.trim().toLocaleLowerCase();
   return (
+    (!f.slides || slideLinks(s).length > 0) &&
     (!f.date.length ||
       f.date.some(
         (d) => day(s.start) <= d && day(new Date(Date.parse(s.end) - 1)) >= d,
@@ -66,6 +70,7 @@ export function matchesFilters(s, f, day) {
 export function filterQuery(f, view) {
   const p = new URLSearchParams();
   if (f.search) p.set('q', f.search);
+  if (f.slides) p.set('slides', '1');
   for (const name of ['date', 'venue', 'type', 'level'])
     for (const v of f[name]) p.append(name, v);
   if (view !== 'simple') p.set('view', view);
@@ -75,6 +80,7 @@ export function parseFilters(query) {
   const p = new URLSearchParams(query),
     f = emptyFilters();
   f.search = p.get('q') || '';
+  f.slides = p.get('slides') === '1';
   for (const name of ['date', 'venue', 'type', 'level'])
     f[name] = p.getAll(name);
   return { filters: f, view: p.get('view') };

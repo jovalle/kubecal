@@ -34,6 +34,15 @@ test('sharing preserves repeated filters and view', () => {
     view: 'grid',
   });
 });
+test('slide filter matches sessions with slide decks and survives a shared URL', () => {
+  const f = { ...emptyFilters(), slides: true };
+  assert.equal(matchesFilters({ ...s, links: [] }, f, day), false);
+  assert.equal(
+    matchesFilters({ ...s, links: [{ label: 'Slides' }] }, f, day),
+    true,
+  );
+  assert.deepEqual(parseFilters(filterQuery(f, 'simple')).filters, f);
+});
 test('fuzzy search tolerates a typo and matches multiple terms', async () => {
   const { fuzzyMatch } = await import('../filters.mjs');
   assert.equal(

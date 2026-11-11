@@ -294,7 +294,7 @@ function sidebar() {
     'level',
     'Experience Level',
     levels.filter((t) => tags.includes(t)),
-  )}<label for="timezone">Timezone</label><select id="timezone">${options(uniq(['America/Denver', state.timezone, ...(Intl.supportedValuesOf?.('timeZone') || [])]), state.timezone, 'Choose Timezone')}</select><button class="tool-button clear" data-action="clear">Clear Filters</button></aside>`;
+  )}<label class="slides-filter"><input type="checkbox" id="filter-slides" ${filters.slides ? 'checked' : ''}> <span>Has slides</span></label><label for="timezone">Timezone</label><select id="timezone">${options(uniq(['America/Denver', state.timezone, ...(Intl.supportedValuesOf?.('timeZone') || [])]), state.timezone, 'Choose Timezone')}</select><button class="tool-button clear" data-action="clear">Clear Filters</button></aside>`;
 }
 function grouped(list, view) {
   let html = '',
@@ -1044,7 +1044,12 @@ $('#main').addEventListener('click', (e) => {
   else if (a === 'calendar') calendarModal();
 });
 $('#main').addEventListener('change', (e) => {
-  if (e.target.id === 'timezone' && e.target.value) {
+  if (e.target.id === 'filter-slides') {
+    filters.slides = e.target.checked;
+    syncUrl();
+    render();
+    $('#filter-slides')?.focus();
+  } else if (e.target.id === 'timezone' && e.target.value) {
     state.timezone = e.target.value;
     save();
     render();
@@ -1328,6 +1333,7 @@ function updateHeader() {
   filterButton.setAttribute('aria-expanded', String(headerFilterOpen));
   const count =
     (filters.search ? 1 : 0) +
+    (filters.slides ? 1 : 0) +
     ['date', 'venue', 'type', 'level'].reduce(
       (n, key) => n + filters[key].length,
       0,

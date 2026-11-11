@@ -738,7 +738,8 @@ footer {
   max-height: 220px;
   overflow: auto;
 }
-.sidebar .facet label {
+.sidebar .facet label,
+.sidebar .slides-filter {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -746,7 +747,8 @@ footer {
   margin: 0;
   padding: 5px 0;
 }
-.sidebar .facet input {
+.sidebar .facet input,
+.sidebar .slides-filter input {
   width: 18px;
   height: 18px;
   margin: 0;
