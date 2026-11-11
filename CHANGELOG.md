@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/jovalle/kubecal/compare/v1.2.0...v1.3.0) (2026-11-11)
+
+### Features
+
+* add Cloudflare Worker support and deployment scripts ([e64f2eb](https://github.com/jovalle/kubecal/commit/e64f2ebb738c454863c8e3d140df133788395933))
+
 ## [1.2.0](https://github.com/jovalle/kubecal/compare/v1.1.0...v1.2.0) (2026-11-11)
 
 ### Features
