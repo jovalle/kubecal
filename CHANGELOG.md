@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/jovalle/kubecal/compare/v1.1.0...v1.2.0) (2026-11-11)
+
+### Features
+
+* publish slide previews and local viewer ([915f767](https://github.com/jovalle/kubecal/commit/915f767746572e132ad26cbac1cf56580867e684))
+
 ## [1.1.0](https://github.com/jovalle/kubecal/compare/v1.0.0...v1.1.0) (2026-11-10)
 
 ### Features
