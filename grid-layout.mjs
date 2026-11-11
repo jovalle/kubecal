@@ -1,4 +1,4 @@
-export function gridTimeline(start, end, events) {
+export function gridTimeline(start, end, events, extraPoints = []) {
   const intervals = events
     .map(({ start: from, end: to }) => ({
       start: Math.max(start, from),
@@ -10,6 +10,7 @@ export function gridTimeline(start, end, events) {
       start,
       end,
       ...intervals.flatMap((e) => [e.start, e.end]),
+      ...extraPoints.filter((point) => point >= start && point <= end),
       ...Array.from(
         { length: Math.floor((end - start) / 15) + 1 },
         (_, i) => start + i * 15,

@@ -6,7 +6,7 @@ import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
@@ -36,6 +36,10 @@ def download(url):
         partial.write_bytes(body)
         partial.replace(target)
         return url, True
+    except HTTPError as error:
+        if error.code != 404:
+            print(f"skip {url}: {error}", file=sys.stderr)
+        return url, False
     except (OSError, URLError, ValueError) as error:
         print(f"skip {url}: {error}", file=sys.stderr)
         return url, False
@@ -59,6 +63,8 @@ def rewrite(node, field, cached):
             key: (
                 f"./tmp/offline/img/{local_name(value)}"
                 if key == field and value in cached
+                else ""
+                if key == field and isinstance(value, str) and value.startswith("http")
                 else rewrite(value, field, cached)
             )
             for key, value in node.items()
@@ -82,6 +88,8 @@ def main():
         out = rewrite(docs[name], field, cached)
         (OUT / "data" / name).write_text(json.dumps(out, ensure_ascii=False))
     print(f"Cached {len(cached)}/{len(urls)} images in {IMAGES}")
+    if missing := len(urls) - len(cached):
+        print(f"{missing} unavailable image(s) will use placeholders.")
 
 
 if __name__ == "__main__":

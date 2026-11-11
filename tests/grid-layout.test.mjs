@@ -46,3 +46,8 @@ test('short breaks are visually filled only within the same lane', () => {
   assert.equal(assigned[2][2], b.end);
   assert.equal(a.end, '2026-11-09T10:20:00Z');
 });
+
+test('timeline includes the exact current time among its positions', () => {
+  const timeline = gridTimeline(0, 60, [{ start: 0, end: 30 }], [7.5]);
+  assert.equal(timeline.get(7.5), 18);
+});

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5465 --strictPort",
-    "build": "rm -rf dist && mkdir dist && cp -R index.html *.mjs style.css .nojekyll assets data dist/",
-    "test": "node --test tests/*.test.mjs"
+    "build": "rm -rf dist && mkdir dist && cp -R index.html *.mjs style.css .nojekyll assets data dist/ && if [ -d slides/2026 ]; then mkdir -p dist/slides && cp -R slides/2026 dist/slides/; fi",
+    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

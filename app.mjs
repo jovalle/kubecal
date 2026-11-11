@@ -4,6 +4,10 @@ import {
   overlaps,
   calendar,
   recoveryCode,
+  slideLinks,
+  slidePreview,
+  loadConvertedSlide,
+  sessionAtNow,
 } from './core.mjs';
 import {
   emptyFilters,
@@ -95,7 +99,8 @@ let filters = emptyFilters(),
   snapshotMode = false;
 const sponsorFilters = { levels: [], categories: [] };
 const openFacets = new Set(),
-  collapsedDays = new Set();
+  dayOverrides = new Map();
+let printingSchedule = false;
 function syncUrl() {
   const q = filterQuery(filters, state.view);
   history.replaceState(
@@ -178,6 +183,9 @@ function day(s) {
     day: '2-digit',
   }).format(new Date(s));
 }
+function dayOpen(d) {
+  return printingSchedule || (dayOverrides.get(d) ?? d >= day(new Date()));
+}
 function dateLabel(s) {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: state.timezone,
@@ -227,6 +235,10 @@ function color(s) {
 const url = (s) => `#/session/${encodeURIComponent(s.id)}`;
 const trackBadge = (s) =>
   s.tags[0] ? `<span class="track-label">${esc(s.tags[0])}</span>` : '';
+const slides = (s) =>
+  slideLinks(s).length
+    ? `<button type="button" class="slide-icon" data-slides="${esc(s.id)}" aria-label="View slides for ${esc(s.title)}" title="View slides"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="1"/><path d="M12 17v4m-4 0h8M7 13l3-3 3 2 4-4"/></svg></button>`
+    : '';
 const scheduleUrl = () => {
   const q = filterQuery(filters, state.view);
   return '#/' + (q ? '?' + q : '');
@@ -237,7 +249,7 @@ function saveButton(s) {
 }
 function card(s, expanded = false) {
   const preview = expanded ? '' : ` data-preview="${esc(s.id)}"`;
-  return `<article class="card"${preview} style="--bg:${color(s)};--accent:${color(s).replace('e4edf8', '7597c0').replace('f5e4f2', 'bd70aa').replace('e5f3ef', '62a78d').replace('f8ecd9', 'd9a657').replace('e9e7f7', '938ac7').replace('dff3f5', '66b4bd').replace('f7e5e1', 'd58475')}">${saveButton(s)}<div class="card-content"><div class="card-heading"><a${preview} href="${url(s)}">${esc(s.title)}</a>${trackBadge(s)}</div><small>${expanded ? esc(time(s.start) + ' – ' + time(s.end)) + '<br>' : ''}${esc(s.room || 'Location To Be Announced')}</small>${s.speakers && !expanded ? `<span class="speakers">${esc(s.speakers)}</span>` : ''}${expanded ? `<div class="description">${esc(s.description.slice(0, 330))}${s.description.length > 330 ? '…' : ''}</div><span class="muted">${esc(s.speakers)}</span><div>${s.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}</div></article>`;
+  return `<article class="card" data-session="${esc(s.id)}"${preview} style="--bg:${color(s)};--accent:${color(s).replace('e4edf8', '7597c0').replace('f5e4f2', 'bd70aa').replace('e5f3ef', '62a78d').replace('f8ecd9', 'd9a657').replace('e9e7f7', '938ac7').replace('dff3f5', '66b4bd').replace('f7e5e1', 'd58475')}">${saveButton(s)}<div class="card-content"><div class="card-heading"><a${preview} href="${url(s)}">${esc(s.title)}</a><span class="card-heading-end">${trackBadge(s)}${expanded ? slides(s) : ''}</span></div><small>${expanded ? esc(time(s.start) + ' – ' + time(s.end)) + '<br>' : ''}${esc(s.room || 'Location To Be Announced')}</small>${s.speakers && !expanded ? `<span class="speakers">${esc(s.speakers)}</span>` : ''}${expanded ? `<div class="description">${esc(s.description.slice(0, 330))}${s.description.length > 330 ? '…' : ''}</div><span class="muted">${esc(s.speakers)}</span><div>${s.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}</div>${expanded ? '' : slides(s)}</article>`;
 }
 function filtered() {
   return sessions
@@ -305,7 +317,7 @@ function grouped(list, view) {
       lastTime = '';
       lastRoom = '';
       if (lastDay) html += '</details>';
-      html += `<details class="day-section" data-day="${esc(d)}" ${collapsedDays.has(d) ? '' : 'open'}><summary class="day-heading">${esc(dayLabel(d))}</summary>`;
+      html += `<details class="day-section" data-day="${esc(d)}" ${dayOpen(d) ? 'open' : ''}><summary class="day-heading">${esc(dayLabel(d))}</summary>`;
       lastDay = d;
     }
     if (view === 'venue') {
@@ -313,7 +325,7 @@ function grouped(list, view) {
         html += `<h3 class="venue-heading">${esc(s.room || 'Location To Be Announced')}</h3>`;
         lastRoom = s.room;
       }
-      html += `<div class="venue-row">${saveButton(s)}<span class="venue-time">${esc(time(s.start))}</span><a data-preview="${esc(s.id)}" href="${url(s)}">${esc(s.title)}</a>${trackBadge(s)}</div>`;
+      html += `<div class="venue-row" data-session="${esc(s.id)}">${saveButton(s)}<span class="venue-time">${esc(time(s.start))}</span><a data-preview="${esc(s.id)}" href="${url(s)}">${esc(s.title)}</a>${trackBadge(s)}${slides(s)}</div>`;
     } else {
       let t = time(s.start);
       if (t !== lastTime) {
@@ -363,6 +375,7 @@ function grid(list) {
           ) / 60,
         ) * 60,
       ),
+      nowMinute = day(new Date()) === d ? minute(new Date()) : null,
       timeline = gridTimeline(
         start,
         end,
@@ -373,11 +386,14 @@ function grid(list) {
             end: from + (Date.parse(s.end) - Date.parse(s.start)) / 60000,
           };
         }),
+        nowMinute === null ? [] : [nowMinute],
       ),
       height = timeline.get(end);
-    html += `<details class="day-section" data-day="${esc(d)}" ${collapsedDays.has(d) ? '' : 'open'}><summary class="day-heading">${esc(dayLabel(d))}</summary><p class="muted">Drag to pan or scroll horizontally to see more rooms. Choose simple or expanded view for a chronological list.</p><div class="grid-wrap" role="region" tabindex="0" aria-label="Schedule for ${esc(dateLabel(items[0].start))}; scroll to see rooms"><div class="grid" style="width:${75 + columns.reduce((sum, c) => sum + c.width, 0)}px"><div class="grid-head"><span>Time</span>${columns.map((c) => `<span style="width:${c.width}px">${esc(c.room)}</span>`).join('')}</div><div class="grid-body" style="height:${height}px">`;
+    html += `<details class="day-section" data-day="${esc(d)}" ${dayOpen(d) ? 'open' : ''}><summary class="day-heading">${esc(dayLabel(d))}</summary><p class="muted">Drag to pan or scroll horizontally to see more rooms. Choose simple or expanded view for a chronological list.</p><div class="grid-wrap" role="region" tabindex="0" aria-label="Schedule for ${esc(dateLabel(items[0].start))}; scroll to see rooms"><div class="grid" style="width:${75 + columns.reduce((sum, c) => sum + c.width, 0)}px"><div class="grid-head"><span>Time</span>${columns.map((c) => `<span style="width:${c.width}px">${esc(c.room)}</span>`).join('')}</div><div class="grid-body" style="height:${height}px">`;
     for (let t = start; t <= end; t += 15)
       html += `<div class="grid-line" style="top:${timeline.get(t)}px"></div><div class="grid-time" style="top:${timeline.get(t)}px">${Math.floor(t / 60) % 12 || 12}:${String(t % 60).padStart(2, '0')}${t < 720 ? 'am' : 'pm'}</div>`;
+    if (nowMinute !== null && timeline.has(nowMinute))
+      html += `<div class="grid-now" data-now aria-hidden="true" style="top:${timeline.get(nowMinute)}px"></div>`;
     let left = 75;
     for (const column of columns) {
       const width = column.width / column.count;
@@ -389,7 +405,7 @@ function grid(list) {
           ),
           top = timeline.get(from),
           dur = timeline.get(to) - top;
-        html += `<div class="grid-event ${dur < 72 ? 'compact' : ''} ${dur < 24 ? 'micro' : ''}" data-preview="${esc(s.id)}" style="left:${left + i * width}px;top:${top}px;width:${width}px;height:${dur}px;background:${color(s)}">${trackBadge(s)}<div class="grid-event-main">${saveButton(s)}<a draggable="false" data-preview="${esc(s.id)}" href="${url(s)}" aria-label="${esc(s.title)}, ${esc(time(s.start))} to ${esc(time(s.end))}, ${esc(column.room)}">${esc(s.title)}</a></div><span class="grid-event-time">${esc(shortTime(s.start))} – ${esc(shortTime(s.end))}</span></div>`;
+        html += `<div data-session="${esc(s.id)}" class="grid-event ${dur < 72 ? 'compact' : ''} ${dur < 24 ? 'micro' : ''}" data-preview="${esc(s.id)}" style="left:${left + i * width}px;top:${top}px;width:${width}px;height:${dur}px;background:${color(s)}">${trackBadge(s)}<div class="grid-event-main">${saveButton(s)}<a draggable="false" data-preview="${esc(s.id)}" href="${url(s)}" aria-label="${esc(s.title)}, ${esc(time(s.start))} to ${esc(time(s.end))}, ${esc(column.room)}">${esc(s.title)}</a>${slides(s)}</div><span class="grid-event-time">${esc(shortTime(s.start))} – ${esc(shortTime(s.end))}</span></div>`;
       }
       left += column.width;
     }
@@ -401,7 +417,7 @@ function schedule() {
   let list = filtered(),
     count = `${list.length} ${list.length === 1 ? 'session' : 'sessions'}${mine ? ' in your schedule' : ''}`;
   $('#main').innerHTML =
-    `<h1 class="sr-only">Schedule</h1><div class="layout ${gridExpanded && state.view === 'grid' ? 'grid-expanded' : ''}"><div class="toolbar"><div class="tabs" role="group" aria-label="Schedule selection"><button data-action="all" aria-pressed="${!mine}" class="${mine ? '' : 'active'}">Event Schedule</button><button data-action="mine" aria-pressed="${mine}" class="${mine ? 'active' : ''}">My Schedule <span class="count">${state.selected.length}</span></button></div><button class="filter-toggle" data-action="filters" aria-controls="filters-panel" aria-expanded="${filterOpen}">Filters</button><div class="view-switch" role="group" aria-label="Schedule View">${[
+    `<h1 class="sr-only">Schedule</h1><div class="layout ${gridExpanded && state.view === 'grid' ? 'grid-expanded' : ''}"><div class="toolbar"><div class="tabs" role="group" aria-label="Schedule selection"><button data-action="all" aria-pressed="${!mine}" class="${mine ? '' : 'active'}">Event Schedule</button><button data-action="mine" aria-pressed="${mine}" class="${mine ? 'active' : ''}">My Schedule <span class="count">${state.selected.length}</span></button></div><button class="tool-button" data-action="now" type="button">Now</button><button class="filter-toggle" data-action="filters" aria-controls="filters-panel" aria-expanded="${filterOpen}">Filters</button><div class="view-switch" role="group" aria-label="Schedule View">${[
       [
         'simple',
         'Simple',
@@ -591,6 +607,73 @@ function showModal(title, content) {
   $('#modal-content').innerHTML = content;
   $('#modal').showModal();
 }
+let slideManifest,
+  slideRequest = 0,
+  slideController,
+  slideObjectUrls = [];
+async function showSlides(session) {
+  if (!session) return;
+  const modal = $('#modal');
+  const request = ++slideRequest;
+  slideController = new AbortController();
+  modal.classList.add('slide-viewer');
+  showModal(session.title, '<p>Loading slides…</p>');
+  slideManifest ||= fetch('./slides/2026/manifest.json')
+    .then((response) => (response.ok ? response.json() : {}))
+    .catch(() => ({}));
+  const manifest = await slideManifest;
+  if (
+    request !== slideRequest ||
+    !modal.open ||
+    !modal.classList.contains('slide-viewer')
+  )
+    return;
+  $('#modal-content').innerHTML = slideLinks(session)
+    .map((link) => {
+      const preview = slidePreview(
+        link.url,
+        manifest,
+        document.querySelector('meta[name=proxy]')?.content,
+      );
+      const source = safeUrl(link.url);
+      let name;
+      try {
+        name = decodeURIComponent(new URL(link.url).pathname.split('~').pop());
+      } catch {
+        name = 'Slide file';
+      }
+      const converting = preview && name.toLowerCase().endsWith('.pptx');
+      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'GitHub Pages cannot convert PowerPoint files for preview. Download the file or run KubeCal locally with <code>just local</code> to view it.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
+    })
+    .join('');
+  const signal = slideController.signal;
+  for (const section of modal.querySelectorAll('[data-convert]')) {
+    loadConvertedSlide(section.dataset.convert, signal)
+      .then((blob) => {
+        if (signal.aborted) return;
+        const src = URL.createObjectURL(blob);
+        slideObjectUrls.push(src);
+        const iframe = document.createElement('iframe');
+        iframe.title = `${session.title} slides`;
+        iframe.src = src;
+        section.replaceChildren(iframe);
+      })
+      .catch(() => {
+        if (!signal.aborted)
+          section.innerHTML = `<p>Could not prepare this preview. <a href="${esc(section.dataset.source)}" target="_blank" rel="noopener">Download the original file</a>.</p>`;
+      });
+  }
+}
+$('#modal').addEventListener('close', () => {
+  if ($('#modal').classList.contains('slide-viewer')) {
+    slideRequest++;
+    slideController?.abort();
+    slideObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    slideObjectUrls = [];
+    $('#modal').classList.remove('slide-viewer');
+    $('#modal-content').replaceChildren();
+  }
+});
 function download(name, content, type) {
   let a = document.createElement('a');
   let u = URL.createObjectURL(new Blob([content], { type }));
@@ -739,7 +822,9 @@ function hidePreview() {
     .forEach((el) => el.removeAttribute('aria-describedby'));
 }
 $('#main').addEventListener('pointerover', (e) => {
-  const link = e.target.closest('[data-preview]');
+  const link = e.target.closest('.slide-icon')
+    ? null
+    : e.target.closest('[data-preview]');
   if (link && e.pointerType !== 'touch' && !dragState) showPreview(link, e);
 });
 $('#main').addEventListener('pointerout', (e) => {
@@ -752,7 +837,9 @@ $('#main').addEventListener('pointerout', (e) => {
     hidePreview();
 });
 $('#main').addEventListener('focusin', (e) => {
-  const link = e.target.closest('[data-preview]');
+  const link = e.target.closest('.slide-icon')
+    ? null
+    : e.target.closest('[data-preview]');
   if (link) showPreview(link);
 });
 $('#main').addEventListener('focusout', (e) => {
@@ -860,8 +947,11 @@ $('#main').addEventListener(
   'toggle',
   (e) => {
     if (e.target.dataset.day) {
-      if (e.target.open) collapsedDays.delete(e.target.dataset.day);
-      else collapsedDays.add(e.target.dataset.day);
+      if (!printingSchedule) {
+        const d = e.target.dataset.day;
+        if (e.target.open === d >= day(new Date())) dayOverrides.delete(d);
+        else dayOverrides.set(d, e.target.open);
+      }
     }
     if (e.target.dataset.facetDetails) {
       if (e.target.open) openFacets.add(e.target.dataset.facetDetails);
@@ -876,6 +966,12 @@ $('#main').addEventListener(
   true,
 );
 $('#main').addEventListener('click', (e) => {
+  const slideButton = e.target.closest('[data-slides]');
+  if (slideButton) {
+    hidePreview();
+    showSlides(byId.get(slideButton.dataset.slides));
+    return;
+  }
   const view = e.target.closest('[data-view]');
   if (view) {
     state.view = view.dataset.view;
@@ -905,7 +1001,9 @@ $('#main').addEventListener('click', (e) => {
     return;
   }
   let a = e.target.closest('[data-action]')?.dataset.action;
-  if (a === 'all' || a === 'mine') {
+  if (a === 'now') {
+    scrollToNow();
+  } else if (a === 'all' || a === 'mine') {
     mine = a === 'mine';
     render();
     document.querySelector(`[data-action="${a}"]`)?.focus();
@@ -989,18 +1087,62 @@ $('#main').addEventListener('input', (e) => {
   }
   if (e.target.id === 'sponsor-search') updateSponsors();
 });
+function scrollToNow() {
+  const now = new Date(),
+    today = day(now);
+  const target = sessionAtNow(
+    filtered().filter((s) => day(s.start) === today),
+    now.getTime(),
+  );
+  if (!target) {
+    notify('No sessions today match the current schedule and filters.');
+    return;
+  }
+  dayOverrides.set(today, true);
+  const restoreButton = document.activeElement?.dataset.action === 'now';
+  if (state.view === 'grid') {
+    render();
+    if (restoreButton)
+      document
+        .querySelector('[data-action="now"]')
+        ?.focus({ preventScroll: true });
+  }
+  const section = [
+    ...document.querySelectorAll('.schedule-results .day-section'),
+  ].find((el) => el.dataset.day === today);
+  if (!section) return;
+  section.open = true;
+  const event = [...section.querySelectorAll('[data-session]')].find(
+    (el) => el.dataset.session === target.id,
+  );
+  if (state.view === 'grid') {
+    const wrap = section.querySelector('.grid-wrap');
+    const destination = section.querySelector('[data-now]') || event;
+    if (wrap && destination) {
+      wrap.scrollTop = Math.max(
+        0,
+        destination.offsetTop -
+          section.querySelector('.grid-head').offsetHeight -
+          12,
+      );
+      section.scrollIntoView({ block: 'start' });
+    }
+  } else event?.scrollIntoView({ block: 'start', inline: 'nearest' });
+}
 function printSchedule() {
   const old = state.view,
-    closed = [...collapsedDays],
+    overrides = [...dayOverrides],
     restoreFocus = document.activeElement?.dataset.action === 'print';
-  collapsedDays.clear();
+  printingSchedule = true;
   state.view = 'expanded';
   render();
   window.addEventListener(
     'afterprint',
     () => {
       state.view = old;
-      closed.forEach((d) => collapsedDays.add(d));
+      printingSchedule = false;
+      dayOverrides.clear();
+      overrides.forEach(([d, open]) => dayOverrides.set(d, open));
       render();
       if (restoreFocus) document.querySelector('[data-action=print]')?.focus();
     },
@@ -1163,6 +1305,7 @@ function updateHeader() {
         String(button.dataset.headerView === state.view),
       ),
     );
+  $('#header-now').hidden = !shortcutsNeeded;
   $('#header-grid-width').hidden = !shortcutsNeeded || state.view !== 'grid';
   $('#header-grid-width').setAttribute('aria-pressed', String(gridExpanded));
   document.documentElement.style.setProperty(
@@ -1198,6 +1341,7 @@ $('#header-filter').addEventListener('click', () => {
   updateHeader();
   if (headerFilterOpen) $('#filter-search')?.focus();
 });
+$('#header-now').addEventListener('click', scrollToNow);
 $('#header-mine').addEventListener('click', () => {
   mine = !mine;
   render();

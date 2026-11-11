@@ -83,3 +83,122 @@ test('versioned recovery dictionaries restore old codes and include newly added 
   assert.throws(() => decodeState(newCode, oldDictionary));
   assert.throws(() => decodeState(oldCode, newDictionary, 2));
 });
+
+test('finds only slide links on a session', async () => {
+  const { slideLinks } = await import('../core.mjs');
+  assert.deepEqual(
+    slideLinks({
+      links: [
+        { label: 'Website', url: 'https://example.com' },
+        { label: ' Slides ', url: 'https://example.com/deck.pdf' },
+      ],
+    }),
+    [{ label: ' Slides ', url: 'https://example.com/deck.pdf' }],
+  );
+  assert.deepEqual(slideLinks({ links: [] }), []);
+});
+
+test('slide previews use only mapped PDF or image assets', async () => {
+  const { slidePreview } = await import('../core.mjs');
+  const url = 'https://sessionize.com/download/example~deck.pdf';
+  assert.deepEqual(slidePreview(url, { [url]: 'abc123-slides.pdf' }), {
+    src: './slides/2026/abc123-slides.pdf',
+    type: 'pdf',
+  });
+  assert.deepEqual(
+    slidePreview('https://example.com/image.jpg', {
+      'https://example.com/image.jpg': 'abc123-image.jpg',
+    }),
+    { src: './slides/2026/abc123-image.jpg', type: 'image' },
+  );
+  assert.equal(slidePreview(url, {}), null);
+  assert.equal(slidePreview(url, { [url]: '../other.pdf' }), null);
+  assert.equal(slidePreview(url, { [url]: 'abc123.pptx' }), null);
+  assert.equal(
+    slidePreview('javascript:alert(1)', {
+      'javascript:alert(1)': 'abc123-slides.pdf',
+    }),
+    null,
+  );
+});
+
+test('uses the configured proxy for supported Sessionize previews', async () => {
+  const { slidePreview } = await import('../core.mjs');
+  const source = 'https://sessionize.com/download/example~deck.pdf';
+  assert.deepEqual(slidePreview(source, {}, 'https://preview.example/'), {
+    src: `https://preview.example/?${new URLSearchParams({ url: source })}`,
+    type: 'pdf',
+  });
+  assert.equal(
+    slidePreview(
+      'https://example.com/deck.pdf',
+      {},
+      'https://preview.example/',
+    ),
+    null,
+  );
+});
+
+test('permits a loopback proxy for local previews', async () => {
+  const { slidePreview } = await import('../core.mjs');
+  const url = 'https://sessionize.com/download/example~deck.pdf';
+  assert.equal(slidePreview(url, {}, 'http://127.0.0.1:5466/').type, 'pdf');
+  assert.equal(slidePreview(url, {}, 'http://example.com/'), null);
+});
+
+test('finds the current or next session and handles times outside the schedule', async () => {
+  const { sessionAtNow } = await import('../core.mjs');
+  const sessions = [
+    {
+      id: 'morning',
+      start: '2026-11-10T09:00:00Z',
+      end: '2026-11-10T10:00:00Z',
+    },
+    { id: 'late', start: '2026-11-10T11:00:00Z', end: '2026-11-10T12:00:00Z' },
+  ];
+  assert.equal(
+    sessionAtNow(sessions, Date.parse('2026-11-10T08:00:00Z')).id,
+    'morning',
+  );
+  assert.equal(
+    sessionAtNow(sessions, Date.parse('2026-11-10T09:30:00Z')).id,
+    'morning',
+  );
+  assert.equal(
+    sessionAtNow(sessions, Date.parse('2026-11-10T10:30:00Z')).id,
+    'late',
+  );
+  assert.equal(
+    sessionAtNow(sessions, Date.parse('2026-11-10T13:00:00Z')).id,
+    'late',
+  );
+  assert.equal(sessionAtNow([], Date.now()), null);
+});
+
+test('offers PowerPoint previews through the local proxy', async () => {
+  const { slidePreview } = await import('../core.mjs');
+  const source = 'https://sessionize.com/download/example~deck.pptx';
+  assert.equal(slidePreview(source, {}, 'http://127.0.0.1:5466/').type, 'pdf');
+  assert.equal(slidePreview(source, {}, 'https://preview.example/'), null);
+});
+
+test('converted slides report proxy errors and reject non-PDF responses', async (t) => {
+  const { loadConvertedSlide } = await import('../core.mjs');
+  const original = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = original;
+  });
+  globalThis.fetch = async () => new Response('failed', { status: 502 });
+  await assert.rejects(loadConvertedSlide('http://127.0.0.1:5466/'));
+  globalThis.fetch = async () =>
+    new Response('not a PDF', { headers: { 'content-type': 'text/html' } });
+  await assert.rejects(loadConvertedSlide('http://127.0.0.1:5466/'));
+  globalThis.fetch = async () =>
+    new Response('%PDF-test', {
+      headers: { 'content-type': 'application/pdf' },
+    });
+  assert.equal(
+    (await loadConvertedSlide('http://127.0.0.1:5466/')).type,
+    'application/pdf',
+  );
+});

@@ -42,6 +42,12 @@ export default {
   plugins: [
     {
       name: 'kubecal-offline',
+      transformIndexHtml(html) {
+        return html.replace(
+          'name="proxy" content=""',
+          'name="proxy" content="http://127.0.0.1:5466/"',
+        );
+      },
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const path = req.url?.split('?')[0];

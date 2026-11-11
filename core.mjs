@@ -168,3 +168,63 @@ export function recoveryCode(input) {
   }
   throw new Error('Enter a recovery code or a KubeCal snapshot link.');
 }
+
+export const slideLinks = (session) =>
+  session.links.filter((link) => link.label.trim().toLowerCase() === 'slides');
+
+export function slidePreview(url, manifest, proxy = '') {
+  try {
+    const source = new URL(url);
+    if (!['https:', 'http:'].includes(source.protocol)) return null;
+    const extension = source.pathname.split('.').pop().toLowerCase();
+    if (
+      proxy &&
+      source.protocol === 'https:' &&
+      source.hostname === 'sessionize.com' &&
+      source.pathname.startsWith('/download/') &&
+      ['pdf', 'jpg', 'png', 'pptx'].includes(extension)
+    ) {
+      const endpoint = new URL(proxy);
+      if (
+        (extension !== 'pptx' && endpoint.protocol === 'https:') ||
+        (endpoint.protocol === 'http:' && endpoint.hostname === '127.0.0.1')
+      ) {
+        endpoint.searchParams.set('url', url);
+        return {
+          src: endpoint.href,
+          type: ['pdf', 'pptx'].includes(extension) ? 'pdf' : 'image',
+        };
+      }
+    }
+    const name = manifest[url];
+    if (!/^[a-f0-9]+-[a-zA-Z0-9_.-]+\.(pdf|jpg|png)$/.test(name || ''))
+      return null;
+    return {
+      src: `./slides/2026/${name}`,
+      type: name.endsWith('.pdf') ? 'pdf' : 'image',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function loadConvertedSlide(url, signal) {
+  const response = await fetch(url, { signal });
+  if (
+    !response.ok ||
+    !response.headers.get('content-type')?.startsWith('application/pdf')
+  )
+    throw new Error('Slide conversion failed');
+  return response.blob();
+}
+
+export function sessionAtNow(sessions, now) {
+  const ongoing = sessions.filter(
+    (s) => Date.parse(s.start) <= now && Date.parse(s.end) > now,
+  );
+  if (ongoing.length)
+    return ongoing.reduce((a, b) => (a.start > b.start ? a : b));
+  return (
+    sessions.find((s) => Date.parse(s.start) > now) || sessions.at(-1) || null
+  );
+}
