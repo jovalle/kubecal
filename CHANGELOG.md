@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/jovalle/kubecal/compare/v1.3.0...v1.4.0) (2026-11-11)
+
+### Features
+
+* add event overlays ([566cbd3](https://github.com/jovalle/kubecal/commit/566cbd38d0b5dc46f55604796fa6075a3fd7efbf))
+* add slide deck filter ([a8cd795](https://github.com/jovalle/kubecal/commit/a8cd795f5d1c9e2a84787bdd3a90ecd6bf9f350b))
+
 ## [1.3.0](https://github.com/jovalle/kubecal/compare/v1.2.0...v1.3.0) (2026-11-11)
 
 ### Features
