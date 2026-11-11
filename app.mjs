@@ -633,7 +633,11 @@ async function showSlides(session) {
       const preview = slidePreview(
         link.url,
         manifest,
-        document.querySelector('meta[name=proxy]')?.content,
+        document.querySelector('meta[name=proxy]')?.content &&
+          new URL(
+            document.querySelector('meta[name=proxy]').content,
+            location.href,
+          ).href,
       );
       const source = safeUrl(link.url);
       let name;
@@ -643,7 +647,7 @@ async function showSlides(session) {
         name = 'Slide file';
       }
       const converting = preview && name.toLowerCase().endsWith('.pptx');
-      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'GitHub Pages cannot convert PowerPoint files for preview. Download the file or run KubeCal locally with <code>just local</code> to view it.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
+      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'PowerPoint preview is available when running KubeCal locally with <code>just local</code>. Download the file to view it here.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
     })
     .join('');
   const signal = slideController.signal;

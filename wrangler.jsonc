@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kubecal",
+  "account_id": "ce9155e68908072f718b1241bc61cb98",
+  "main": "proxy/site-worker.mjs",
+  "compatibility_date": "2026-11-10",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "kubecon.4j.do", "custom_domain": true },
+    { "pattern": "kubecon.4j.do/*", "zone_name": "4j.do" },
+  ],
+  "assets": { "directory": "./dist-worker", "binding": "ASSETS" },
+  "observability": { "enabled": true, "traces": { "enabled": true } },
+}

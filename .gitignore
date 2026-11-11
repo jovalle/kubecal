@@ -6,3 +6,5 @@ __pycache__/
 .DS_Store
 slides/2026/
 docs/
+dist-worker/
+.wrangler/

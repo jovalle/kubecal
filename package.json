@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5465 --strictPort",
     "build": "rm -rf dist && mkdir dist && cp -R index.html *.mjs style.css .nojekyll assets data dist/ && if [ -d slides/2026 ]; then mkdir -p dist/slides && cp -R slides/2026 dist/slides/; fi",
-    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'"
+    "test": "node --test tests/*.test.mjs && python3 -m unittest discover -s tests -p 'test_*.py'",
+    "build:worker": "node scripts/build-worker.mjs",
+    "deploy:worker": "npm run build:worker && wrangler deploy"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -17,6 +19,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "semantic-release": "^25.0.9",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "wrangler": "^4.142.0"
   }
 }
