@@ -2395,3 +2395,39 @@ input[type='search']:focus-visible {
   padding: 0;
   line-height: 1;
 }
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .slide-viewer[open] {
+    display: flex;
+    flex-direction: column;
+    height: 94dvh;
+    max-height: 94dvh;
+    padding: 8px 12px;
+  }
+  .slide-viewer .dialog-head h2 {
+    font-size: 16px;
+    margin: 4px 0;
+  }
+  .slide-viewer #modal-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .slide-viewer .slide-deck:has([data-pdf]) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    margin-top: 4px;
+  }
+  .slide-viewer [data-pdf] {
+    flex: 1;
+    min-height: 0;
+  }
+  .slide-viewer .slide-deck iframe {
+    height: 100%;
+    margin: 0;
+  }
+  .slide-viewer .slide-deck > p {
+    margin: 4px 0 0;
+  }
+}

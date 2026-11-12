@@ -1,3 +1,4 @@
+import { slideViewerUrl } from './slide-viewer.mjs';
 import {
   encodeState,
   decodeState,
@@ -742,20 +743,48 @@ async function showSlides(session) {
         name = 'Slide file';
       }
       const converting = preview && name.toLowerCase().endsWith('.pptx');
-      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'PowerPoint preview is available when running KubeCal locally with <code>just serve local</code>. Download the file to view it here.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
+      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<div data-pdf="${esc(preview.src)}" data-source="${esc(source)}"><p role="status">Loading PDF preview…</p></div><p><a href="${esc(source)}" target="_blank" rel="noopener">Open original file</a></p>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'PowerPoint preview is available when running KubeCal locally with <code>just serve local</code>. Download the file to view it here.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
     })
     .join('');
   const signal = slideController.signal;
+  async function showPdf(section, src) {
+    try {
+      const mobile = matchMedia(
+        '(max-width: 767px), (pointer: coarse) and (max-height: 600px)',
+      ).matches;
+      const url = new URL(src, location.href);
+      if (
+        mobile &&
+        url.origin !== location.origin &&
+        url.protocol !== 'blob:'
+      ) {
+        const blob = await loadConvertedSlide(url.href, signal);
+        if (signal.aborted) return;
+        src = URL.createObjectURL(blob);
+        slideObjectUrls.push(src);
+      } else {
+        src = url.href;
+      }
+      if (signal.aborted) return;
+      const iframe = document.createElement('iframe');
+      iframe.title = `${session.title} slides`;
+      iframe.src = slideViewerUrl(src, mobile);
+      section.replaceChildren(iframe);
+    } catch {
+      if (!signal.aborted)
+        section.innerHTML = `<p>Could not load this preview. <a href="${esc(section.dataset.source)}" target="_blank" rel="noopener">Open the original file</a>.</p>`;
+    }
+  }
+  for (const section of modal.querySelectorAll('[data-pdf]'))
+    showPdf(section, section.dataset.pdf);
   for (const section of modal.querySelectorAll('[data-convert]')) {
     loadConvertedSlide(section.dataset.convert, signal)
       .then((blob) => {
         if (signal.aborted) return;
         const src = URL.createObjectURL(blob);
         slideObjectUrls.push(src);
-        const iframe = document.createElement('iframe');
-        iframe.title = `${session.title} slides`;
-        iframe.src = src;
-        section.replaceChildren(iframe);
+        section.innerHTML = `<div data-pdf data-source="${esc(section.dataset.source)}"><p role="status">Loading PDF preview…</p></div><p><a href="${esc(section.dataset.source)}" target="_blank" rel="noopener">Open original file</a></p>`;
+        showPdf(section.querySelector('[data-pdf]'), src);
       })
       .catch(() => {
         if (!signal.aborted)
