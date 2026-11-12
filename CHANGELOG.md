@@ -1,3 +1,9 @@
+## [1.5.0](https://github.com/jovalle/kubecal/compare/v1.4.0...v1.5.0) (2026-11-12)
+
+### Features
+
+* implement my preset with session management and local storage ([a1ef668](https://github.com/jovalle/kubecal/commit/a1ef668a0cf3272c8e31c6082c1dbafdd58aaa36))
+
 ## [1.4.0](https://github.com/jovalle/kubecal/compare/v1.3.0...v1.4.0) (2026-11-11)
 
 ### Features
