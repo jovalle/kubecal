@@ -11,16 +11,17 @@ deps:
     @if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then npm ci; fi
     @if [ ! -f .git/hooks/pre-commit ]; then pre-commit install; fi
 
-# Start the Vite live-reload server and open it in a Chromium browser
-dev: deps (_serve "")
+# Start the live-reload server; pass local to enable offline data and the slide proxy
+serve mode="": deps
+    @case {{quote(mode)}} in "") just _serve "" ;; local) just _local ;; *) echo "Usage: just serve [local]" >&2; exit 2 ;; esac
 
 # Cache remote images and use the local slide proxy (slide previews need internet)
-local: deps
+_local:
     #!/usr/bin/env bash
     set -euo pipefail
     for port in {{port}} 5466; do
       if nc -z {{host}} "$port" 2>/dev/null; then
-        echo "Port $port is already in use. Stop the existing server before running just local." >&2
+        echo "Port $port is already in use. Stop the existing server before running just serve local." >&2
         exit 1
       fi
     done

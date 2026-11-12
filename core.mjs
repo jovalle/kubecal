@@ -228,3 +228,31 @@ export function sessionAtNow(sessions, now) {
     sessions.find((s) => Date.parse(s.start) > now) || sessions.at(-1) || null
   );
 }
+
+export function inSchedule(schedule, id, selected, preset, searching = false) {
+  return (
+    schedule === 'all' ||
+    (schedule === 'jay' && searching) ||
+    (schedule === 'mine' ? selected : preset).includes(id)
+  );
+}
+
+export function toggleSession(selected, id) {
+  return selected.includes(id)
+    ? selected.filter((item) => item !== id)
+    : [...selected, id];
+}
+
+export function planDiff(preset, selected) {
+  return {
+    added: selected.filter((id) => !preset.includes(id)),
+    removed: preset.filter((id) => !selected.includes(id)),
+  };
+}
+
+export function applyPlanDiff(preset, diff) {
+  return [
+    ...preset.filter((id) => !diff.removed.includes(id)),
+    ...diff.added.filter((id) => !preset.includes(id)),
+  ];
+}

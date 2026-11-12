@@ -202,3 +202,37 @@ test('converted slides report proxy errors and reject non-PDF responses', async 
     'application/pdf',
   );
 });
+
+test('schedule selection keeps the preset separate from personal selections', async () => {
+  const { inSchedule } = await import('../core.mjs');
+  assert.equal(inSchedule('all', 'a', ['a'], ['b']), true);
+  assert.equal(inSchedule('mine', 'a', ['a'], ['b']), true);
+  assert.equal(inSchedule('mine', 'b', ['a'], ['b']), false);
+  assert.equal(inSchedule('jay', 'a', ['a'], ['b']), false);
+  assert.equal(inSchedule('jay', 'b', ['a'], ['b']), true);
+  assert.equal(inSchedule('jay', 'a', ['a'], ['b'], true), true);
+  assert.equal(inSchedule('mine', 'b', ['a'], ['b'], true), false);
+});
+
+test('toggling a session adds or removes it without changing the original list', async () => {
+  const { toggleSession } = await import('../core.mjs');
+  const original = ['a'];
+  assert.deepEqual(toggleSession(original, 'b'), ['a', 'b']);
+  assert.deepEqual(toggleSession(original, 'a'), []);
+  assert.deepEqual(original, ['a']);
+});
+
+test('plan overrides preserve additions and removals when the preset changes', async () => {
+  const { planDiff, applyPlanDiff } = await import('../core.mjs');
+  const diff = planDiff(['a', 'b'], ['b', 'custom']);
+  assert.deepEqual(diff, { added: ['custom'], removed: ['a'] });
+  assert.deepEqual(applyPlanDiff(['a', 'b', 'new'], diff), [
+    'b',
+    'new',
+    'custom',
+  ]);
+  assert.deepEqual(planDiff(['a', 'b'], ['a', 'b']), {
+    added: [],
+    removed: [],
+  });
+});

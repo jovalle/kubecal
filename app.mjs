@@ -8,6 +8,10 @@ import {
   slidePreview,
   loadConvertedSlide,
   sessionAtNow,
+  inSchedule,
+  toggleSession,
+  planDiff,
+  applyPlanDiff,
 } from './core.mjs';
 import {
   emptyFilters,
@@ -32,13 +36,14 @@ const $ = (s) => document.querySelector(s),
           "'": '&#39;',
         })[c],
     );
-const [data, dictionary, legacyDictionary, people, sponsorData] =
+const [data, dictionary, legacyDictionary, people, sponsorData, preset] =
   await Promise.all([
     fetch('./data/sessions.json').then((r) => r.json()),
     fetch('./data/dictionary-v2.json').then((r) => r.json()),
     fetch('./data/dictionary-v1.json').then((r) => r.json()),
     fetch('./data/speakers.json').then((r) => r.json()),
     fetch('./data/sponsors.json').then((r) => r.json()),
+    fetch('./data/jays-plan.json').then((r) => r.json()),
   ]).catch(() => {
     document.querySelector('#main').innerHTML =
       '<h1>Schedule unavailable</h1><p role="alert">The schedule could not be loaded. Check your connection and reload this page.</p>';
@@ -91,8 +96,57 @@ try {
     500,
   );
 }
+let jaysPlan = preset,
+  presetStorageOK = true;
+try {
+  const savedPlan = localStorage.getItem('kubecal-jays-plan');
+  if (savedPlan !== null) {
+    const parsed = JSON.parse(savedPlan);
+    const validIds = (ids) =>
+      Array.isArray(ids) &&
+      ids.every((id) => typeof id === 'string') &&
+      new Set(ids).size === ids.length;
+    if (validIds(parsed)) {
+      jaysPlan = parsed;
+    } else if (
+      parsed &&
+      validIds(parsed.added) &&
+      validIds(parsed.removed) &&
+      !parsed.added.some((id) => parsed.removed.includes(id))
+    ) {
+      jaysPlan = applyPlanDiff(preset, parsed);
+    } else {
+      throw Error();
+    }
+  }
+} catch {
+  presetStorageOK = false;
+  setTimeout(
+    () =>
+      notify(
+        'Jay’s Plan could not be loaded. Existing data was not overwritten.',
+      ),
+    500,
+  );
+}
+let scheduleChoice = 'all';
+try {
+  const savedChoice = localStorage.getItem('kubecal-schedule-choice');
+  if (['all', 'mine', 'jay'].includes(savedChoice))
+    scheduleChoice = savedChoice;
+} catch {
+  // The schedule remains usable when browser storage is unavailable.
+}
+function chooseSchedule(choice) {
+  scheduleChoice = choice;
+  try {
+    localStorage.setItem('kubecal-schedule-choice', choice);
+  } catch {
+    notify('Schedule selection could not be saved for your next visit.');
+  }
+}
 let filters = emptyFilters(),
-  mine = false,
+  mine = scheduleChoice === 'mine',
   filterOpen = false,
   headerFilterOpen = false,
   gridExpanded = false,
@@ -209,7 +263,35 @@ function shortTime(s) {
     minute: '2-digit',
   }).format(new Date(s));
 }
-const selected = (s) => state.selected.includes(s.id);
+const activeSelections = () =>
+  scheduleChoice === 'jay' ? jaysPlan : state.selected;
+const activeState = () => ({ ...state, selected: activeSelections() });
+const selected = (s) => activeSelections().includes(s.id);
+function savePlan(next) {
+  if (!presetStorageOK) {
+    notify('Jay’s Plan could not be saved. Existing data was not overwritten.');
+    return false;
+  }
+  try {
+    localStorage.setItem(
+      'kubecal-jays-plan',
+      JSON.stringify(planDiff(preset, next)),
+    );
+    jaysPlan = next;
+    return true;
+  } catch {
+    notify('Changes to Jay’s Plan could not be saved.');
+    return false;
+  }
+}
+function toggleSaved(id) {
+  if (scheduleChoice === 'jay') {
+    savePlan(toggleSession(jaysPlan, id));
+  } else {
+    state.selected = toggleSession(state.selected, id);
+    save();
+  }
+}
 const safeUrl = (u) => {
   try {
     let x = new URL(u);
@@ -245,7 +327,8 @@ const scheduleUrl = () => {
 };
 function saveButton(s, withLabel = false) {
   if (snapshotMode) return '';
-  return `<button class="save ${selected(s) ? 'selected' : ''}" data-save="${esc(s.id)}" aria-label="My Schedule: ${esc(s.title)}, ${esc(dateLabel(s.start))}, ${esc(time(s.start))}, ${esc(s.room || 'location to be announced')}" aria-pressed="${selected(s)}">${withLabel ? (selected(s) ? '✓ Saved to My Schedule' : '+ Add to My Schedule') : selected(s) ? '✓' : ''}</button>`;
+  const label = scheduleChoice === 'jay' ? 'Jay’s Plan' : 'My Schedule';
+  return `<button class="save ${selected(s) ? 'selected' : ''}" data-save="${esc(s.id)}" aria-label="${label}: ${esc(s.title)}, ${esc(dateLabel(s.start))}, ${esc(time(s.start))}, ${esc(s.room || 'location to be announced')}" aria-pressed="${selected(s)}">${withLabel ? (selected(s) ? `✓ Saved to ${label}` : `+ Add to ${label}`) : selected(s) ? '✓' : ''}</button>`;
 }
 function card(s, expanded = false) {
   const preview = expanded ? '' : ` data-preview="${esc(s.id)}"`;
@@ -253,7 +336,16 @@ function card(s, expanded = false) {
 }
 function filtered() {
   return sessions
-    .filter((s) => (!mine || selected(s)) && matchesFilters(s, filters, day))
+    .filter(
+      (s) =>
+        inSchedule(
+          scheduleChoice,
+          s.id,
+          state.selected,
+          jaysPlan,
+          !!filters.search.trim(),
+        ) && matchesFilters(s, filters, day),
+    )
     .sort(
       (a, b) =>
         a.start.localeCompare(b.start) || a.title.localeCompare(b.title),
@@ -415,9 +507,9 @@ function grid(list) {
 }
 function schedule() {
   let list = filtered(),
-    count = `${list.length} ${list.length === 1 ? 'session' : 'sessions'}${mine ? ' in your schedule' : ''}`;
+    count = `${list.length} ${list.length === 1 ? 'session' : 'sessions'}${mine ? ' in your schedule' : scheduleChoice === 'jay' ? (filters.search.trim() ? ' matching your search' : ' in Jay’s Plan') : ''}`;
   $('#main').innerHTML =
-    `<h1 class="sr-only">Schedule</h1><div class="layout ${gridExpanded && state.view === 'grid' ? 'grid-expanded' : ''}"><div class="toolbar"><div class="tabs" role="group" aria-label="Schedule selection"><button data-action="all" aria-pressed="${!mine}" class="${mine ? '' : 'active'}">Event Schedule</button><button data-action="mine" aria-pressed="${mine}" class="${mine ? 'active' : ''}">My Schedule <span class="count">${state.selected.length}</span></button></div><button class="tool-button" data-action="now" type="button">Now</button><button class="filter-toggle" data-action="filters" aria-controls="filters-panel" aria-expanded="${filterOpen}">Filters</button><div class="view-switch" role="group" aria-label="Schedule View">${[
+    `<h1 class="sr-only">Schedule</h1><div class="layout ${gridExpanded && state.view === 'grid' ? 'grid-expanded' : ''}"><div class="toolbar"><div class="tabs" role="group" aria-label="Schedule selection"><button data-action="all" aria-pressed="${scheduleChoice === 'all'}" class="${scheduleChoice === 'all' ? 'active' : ''}">Event Schedule</button><button data-action="mine" aria-pressed="${mine}" class="${mine ? 'active' : ''}">My Schedule <span class="count">${state.selected.length}</span></button><button data-action="jay" aria-pressed="${scheduleChoice === 'jay'}" class="${scheduleChoice === 'jay' ? 'active' : ''}">Jay’s Plan</button></div><button class="tool-button" data-action="now" type="button">Now</button><button class="filter-toggle" data-action="filters" aria-controls="filters-panel" aria-expanded="${filterOpen}">Filters</button><div class="view-switch" role="group" aria-label="Schedule View">${[
       [
         'simple',
         'Simple',
@@ -441,7 +533,7 @@ function schedule() {
       )
       .join(
         '',
-      )}</div>${state.view === 'grid' ? `<button class="tool-button" data-action="expand-grid" aria-pressed="${gridExpanded}">Full Width</button>` : ''}</div>${sidebar()}<div class="schedule-results">${mine && state.selected.some((id) => !byId.has(id)) ? '<p class="warning">Some saved sessions are not present in this snapshot. They remain in your backup.</p>' : ''}<div class="muted">${count}</div>${state.view === 'grid' ? grid(list) : grouped(list, state.view)}</div></div>`;
+      )}</div>${state.view === 'grid' ? `<button class="tool-button" data-action="expand-grid" aria-pressed="${gridExpanded}">Full Width</button>` : ''}</div>${sidebar()}<div class="schedule-results">${mine && state.selected.some((id) => !byId.has(id)) ? '<p class="warning">Some saved sessions are not present in this snapshot. They remain in your backup.</p>' : ''}<div class="muted">${count}</div>${state.view === 'grid' ? grid(list) : grouped(list, state.view)}${scheduleChoice === 'jay' ? '<div class="actions"><button class="tool-button" data-action="restore-plan">Restore Original Plan</button><button class="tool-button" data-action="empty-plan">Clear Plan</button></div>' : ''}</div></div>`;
   announceResults(count);
 }
 function sessionContent(s) {
@@ -650,7 +742,7 @@ async function showSlides(session) {
         name = 'Slide file';
       }
       const converting = preview && name.toLowerCase().endsWith('.pptx');
-      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'PowerPoint preview is available when running KubeCal locally with <code>just local</code>. Download the file to view it here.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
+      return `<section class="slide-deck"${converting ? ` data-convert="${esc(preview.src)}" data-source="${esc(source)}"` : ''}>${converting ? '<div class="slide-loading" role="status"><p>Preparing PowerPoint preview…</p><progress aria-label="Preparing PowerPoint preview"></progress></div>' : preview ? (preview.type === 'pdf' ? `<iframe title="${esc(session.title)} slides" src="${esc(preview.src)}"></iframe>` : `<img src="${esc(preview.src)}" alt="${esc(session.title)} slides"><p><a href="${esc(source)}" target="_blank" rel="noopener">Download image</a></p>`) : `<div class="slide-deck-actions"><span>${esc(name)}</span><a href="${esc(source)}" target="_blank" rel="noopener">Download</a></div><p>${name.toLowerCase().endsWith('.pptx') ? 'PowerPoint preview is available when running KubeCal locally with <code>just serve local</code>. Download the file to view it here.' : 'Preview unavailable. Download the file to view it.'}</p>`}</section>`;
     })
     .join('');
   const signal = slideController.signal;
@@ -698,7 +790,7 @@ function openImport() {
 function openExport() {
   let code;
   try {
-    code = encodeState(state, dictionary, 2);
+    code = encodeState(activeState(), dictionary, 2);
   } catch (e) {
     code = '';
     notify(e.message);
@@ -712,7 +804,7 @@ function preview(next) {
   validate(next);
   let unknown = next.selected.filter((id) => !byId.has(id));
   $('#import-preview').innerHTML =
-    `<p>Ready to import ${next.selected.length} saved ${next.selected.length === 1 ? 'session' : 'sessions'}${unknown.length ? ` (${unknown.length} no longer in this snapshot)` : ''}.</p><div class="actions"><button class="primary" data-modal="replace">Replace</button><button data-modal="merge">Merge Selections</button></div>`;
+    `<p>Ready to import into ${scheduleChoice === 'jay' ? 'Jay’s Plan' : 'My Schedule'}: ${next.selected.length} saved ${next.selected.length === 1 ? 'session' : 'sessions'}${unknown.length ? ` (${unknown.length} no longer in this snapshot)` : ''}.</p><div class="actions"><button class="primary" data-modal="replace">Replace</button><button data-modal="merge">Merge Selections</button></div>`;
   pending = next;
 }
 let pending = null;
@@ -1018,29 +1110,38 @@ $('#main').addEventListener('click', (e) => {
   const saveEl = e.target.closest('[data-save]');
   if (saveEl) {
     let id = saveEl.dataset.save;
-    state.selected = state.selected.includes(id)
-      ? state.selected.filter((x) => x !== id)
-      : [...state.selected, id];
-    save();
+    toggleSaved(id);
     render();
     const next = [...document.querySelectorAll('[data-save]')].find(
       (x) => x.dataset.save === id,
     );
     (
       next ||
-      document.querySelector('[data-action=mine]') ||
+      document.querySelector(
+        `[data-action=${scheduleChoice === 'jay' ? 'jay' : 'mine'}]`,
+      ) ||
       $('#main')
     ).focus();
-    if (!next) notify('Session removed from My Schedule.');
+    if (!next)
+      notify(
+        `Session removed from ${scheduleChoice === 'jay' ? 'Jay’s Plan' : 'My Schedule'}.`,
+      );
     return;
   }
   let a = e.target.closest('[data-action]')?.dataset.action;
   if (a === 'now') {
     scrollToNow();
-  } else if (a === 'all' || a === 'mine') {
+  } else if (a === 'all' || a === 'mine' || a === 'jay') {
+    chooseSchedule(a);
     mine = a === 'mine';
     render();
     document.querySelector(`[data-action="${a}"]`)?.focus();
+  } else if (a === 'restore-plan' || a === 'empty-plan') {
+    const restore = a === 'restore-plan';
+    showModal(
+      restore ? 'Restore Original Plan' : 'Clear Jay’s Plan',
+      `<p>${restore ? 'Replace your edits with the original 19-session plan?' : 'Remove all sessions from Jay’s Plan?'}</p><p>This replaces the plan saved in this browser. Export a backup first if you want to keep it.</p><div class="actions"><button class="primary" data-modal="${restore ? 'confirm-restore-plan' : 'confirm-empty-plan'}">${restore ? 'Restore Original Plan' : 'Clear Plan'}</button><button data-modal="cancel-plan">Cancel</button></div>`,
+    );
   } else if (a === 'clear') {
     filters = emptyFilters();
     syncUrl();
@@ -1197,7 +1298,9 @@ $('#share-button').onclick = () => {
   try {
     const page = location.hash.slice(2).split('?')[0].split('/');
     const code =
-      page[0] === 'snapshot' ? page[1] : encodeState(state, dictionary, 2);
+      page[0] === 'snapshot'
+        ? page[1]
+        : encodeState(activeState(), dictionary, 2);
     restoreState(code);
     const link = new URL(location.href);
     link.hash = '/snapshot/' + code;
@@ -1218,10 +1321,7 @@ $('#modal').addEventListener('click', async (e) => {
   const saveEl = e.target.closest('[data-save]');
   if (saveEl && overlaySession) {
     const id = overlaySession.id;
-    state.selected = state.selected.includes(id)
-      ? state.selected.filter((x) => x !== id)
-      : [...state.selected, id];
-    save();
+    toggleSaved(id);
     overlayDirty = true;
     $('#modal-content').innerHTML =
       `${sessionContent(overlaySession)}<p><a href="${url(overlaySession)}">Open event page</a></p>`;
@@ -1231,7 +1331,18 @@ $('#modal').addEventListener('click', async (e) => {
   const a = e.target.dataset.modal;
   if (!a) return;
   try {
-    if (a === 'copy-link') {
+    if (a === 'confirm-restore-plan' || a === 'confirm-empty-plan') {
+      if (!savePlan(a === 'confirm-restore-plan' ? [...preset] : [])) return;
+      $('#modal').close();
+      render();
+      notify(
+        a === 'confirm-restore-plan'
+          ? 'Original plan restored.'
+          : 'Jay’s Plan cleared.',
+      );
+    } else if (a === 'cancel-plan') {
+      $('#modal').close();
+    } else if (a === 'copy-link') {
       await navigator.clipboard.writeText($('#share-link').value);
       notify('Link copied');
     } else if (a === 'copy-id') {
@@ -1248,7 +1359,7 @@ $('#modal').addEventListener('click', async (e) => {
       download(
         'kubecal-2026-backup.json',
         JSON.stringify(
-          { version: 1, event: 'kubecon-na-2026', state },
+          { version: 1, event: 'kubecon-na-2026', state: activeState() },
           null,
           2,
         ),
@@ -1256,14 +1367,22 @@ $('#modal').addEventListener('click', async (e) => {
       );
     else if (a === 'replace' || a === 'merge') {
       if (!pending) throw Error('Nothing to import');
-      state =
-        a === 'replace'
-          ? pending
-          : {
-              ...state,
-              selected: uniq([...state.selected, ...pending.selected]),
-            };
-      save();
+      if (scheduleChoice === 'jay') {
+        const next =
+          a === 'replace'
+            ? pending.selected
+            : uniq([...jaysPlan, ...pending.selected]);
+        if (!savePlan(next)) return;
+      } else {
+        state =
+          a === 'replace'
+            ? pending
+            : {
+                ...state,
+                selected: uniq([...state.selected, ...pending.selected]),
+              };
+        save();
+      }
       pending = null;
       $('#modal').close();
       render();
@@ -1422,6 +1541,7 @@ $('#header-filter').addEventListener('click', () => {
 $('#header-now').addEventListener('click', scrollToNow);
 $('#header-mine').addEventListener('click', () => {
   mine = !mine;
+  chooseSchedule(mine ? 'mine' : 'all');
   render();
   $('#header-mine').focus();
 });
