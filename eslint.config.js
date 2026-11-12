@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/', 'tmp/'] },
+  { ignores: ['dist/', 'tmp/', 'assets/pdfjs/'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,mjs}'],
