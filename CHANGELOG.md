@@ -1,3 +1,13 @@
+## [1.6.0](https://github.com/jovalle/kubecal/compare/v1.5.0...v1.6.0) (2026-11-13)
+
+### Features
+
+* **slides:** render PDF decks with PDF.js on mobile ([f594add](https://github.com/jovalle/kubecal/commit/f594add036f1dc9ba953b6a3ceee34dc4cd65bc4))
+
+### Bug Fixes
+
+* **slides:** fit image decks to the dynamic viewport ([bbe1794](https://github.com/jovalle/kubecal/commit/bbe1794f8c3de6371766d37603d709fd617a699e))
+
 ## [1.5.0](https://github.com/jovalle/kubecal/compare/v1.4.0...v1.5.0) (2026-11-12)
 
 ### Features
